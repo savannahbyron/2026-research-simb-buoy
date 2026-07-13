@@ -1,21 +1,20 @@
 /*
  * ============================================================================
- *  Project:  SIMB Research - Dual Sensor Logger
+ *  Project:  SIMB Research - Dual Sensor Logger  [TESTING VERSION]
  *  Author:   Savannah Byron
  *  Sensors:  MaxBotix MB7374-101 (ultrasonic distance)
  *            Bosch BME280 (temperature, pressure, humidity)
- *  Board:    Adafruit Feather M0
  *
  *  Description:
- *    On startup the board wakes up, takes one measurement from both
- *    sensors, waits 2 minutes, takes a second measurement, then goes idle.
- *    All data is printed over USB Serial as CSV so a computer can log it.
+ *    TESTING MODE - Takes a measurement every few seconds, over and over,
+ *    so you can quickly confirm both sensors and logging are working.
+ *    (Switch back to the 2-minute version for real data collection.)
  * ============================================================================
  */
 
-#include <Wire.h>               // Handles I2C communication (used by BME280)
-#include <Adafruit_Sensor.h>    // Adafruit's common sensor interface
-#include <Adafruit_BME280.h>    // Driver for the BME280 sensor
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
 
 // ---------------------------------------------------------------------------
 //  MaxBotix MB7374 (ultrasonic rangefinder) settings
@@ -27,18 +26,23 @@ long distanceCm;            // Calculated distance in centimeters
 // ---------------------------------------------------------------------------
 //  BME280 (temperature / pressure / humidity) settings
 // ---------------------------------------------------------------------------
-Adafruit_BME280 bme;        // Create the BME280 object (communicates over I2C)
-bool bmeReady = false;      // Tracks whether the sensor was found successfully
+Adafruit_BME280 bme;        // BME280 object (communicates over I2C)
+bool bmeReady = false;      // Tracks whether the sensor was found
+
+// ---------------------------------------------------------------------------
+//  TESTING SETTINGS
+// ---------------------------------------------------------------------------
+const long WAIT_TIME = 5000;   // Time between measurements in milliseconds
+                               // 5000 = 5 seconds (change this for testing)
+int readingNumber = 0;         // Counts how many measurements we've taken
 
 // ---------------------------------------------------------------------------
 //  setup() runs ONCE when the board powers on or resets.
-//  All of our measurement logic lives here.
 // ---------------------------------------------------------------------------
 void setup() {
-  Serial.begin(9600);       // Start USB serial connection at 9600 baud
+  Serial.begin(9600);
 
   // Wait until a computer opens the serial port before continuing.
-  // (Remove this block if you ever run the board without a computer.)
   while (!Serial) {
     delay(10);
   }
@@ -53,40 +57,28 @@ void setup() {
     Serial.println("# WARNING: BME280 not found - check wiring/address");
   }
 
-  Serial.println("# Sensors starting...");
+  Serial.println("# Sensors starting... [TESTING MODE]");
 
-  // Print the CSV column headers so the saved file is easy to read.
+  // Print the CSV column headers once at the start.
   Serial.println("reading,distance_cm,temperature_C,pressure_hPa,humidity_pct");
-
-  // ----- Measurement #1 -----
-  takeMeasurement(1);
-
-  // ----- Wait 2 minutes (120,000 milliseconds) -----
-  delay(120000);
-
-  // ----- Measurement #2 -----
-  takeMeasurement(2);
-
-  // Signal that we are finished. The Python logger watches for this line.
-  Serial.println("# Done. Sensors idle.");
 }
 
 // ---------------------------------------------------------------------------
-//  loop() runs continuously after setup(), but we leave it empty because
-//  we only want two measurements total, then stop.
+//  loop() runs OVER AND OVER. In testing mode we take a measurement,
+//  wait a few seconds, and repeat forever.
 // ---------------------------------------------------------------------------
 void loop() {
-  // Nothing to do here.
+  readingNumber++;              // Increase the counter each time
+  takeMeasurement(readingNumber);
+  delay(WAIT_TIME);             // Wait before the next measurement
 }
 
 // ---------------------------------------------------------------------------
 //  takeMeasurement()
 //  Reads both sensors and prints one line of CSV data.
-//  'readingNumber' just labels whether this is reading 1 or 2.
 // ---------------------------------------------------------------------------
 void takeMeasurement(int readingNumber) {
   // ----- Read the MaxBotix ultrasonic sensor -----
-  // Take several samples and average them for a more stable reading.
   long sum = 0;
   int samples = 5;
   for (int i = 0; i < samples; i++) {
@@ -97,10 +89,10 @@ void takeMeasurement(int readingNumber) {
   distanceCm = sum / samples;              // Average of all samples
 
   // ----- Read the BME280 environmental sensor -----
-  float temp = NAN, pressure = NAN, humidity = NAN;  // Default to "not a number"
+  float temp = NAN, pressure = NAN, humidity = NAN;
   if (bmeReady) {
     temp = bme.readTemperature();          // Temperature in Celsius
-    pressure = bme.readPressure() / 100.0; // Pressure in hPa (Pa / 100)
+    pressure = bme.readPressure() / 100.0; // Pressure in hPa
     humidity = bme.readHumidity();         // Relative humidity in %
   }
 
@@ -109,7 +101,7 @@ void takeMeasurement(int readingNumber) {
   Serial.print(",");
   Serial.print(distanceCm);
   Serial.print(",");
-  Serial.print(temp, 2);        // 2 decimal places
+  Serial.print(temp, 2);
   Serial.print(",");
   Serial.print(pressure, 2);
   Serial.print(",");
