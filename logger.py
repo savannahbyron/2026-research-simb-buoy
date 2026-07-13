@@ -12,7 +12,7 @@ import serial.tools.list_ports     # Lets us list available serial ports
 from datetime import datetime      # Used to timestamp each reading
 
 # ---- CONFIGURE THESE FOR YOUR SETUP ----
-PORT = "COM3"                # Windows: "COM3" | Mac: "/dev/cu.usbmodemXXXX" | Linux: "/dev/ttyACM0"
+PORT = "/dev/cu.usbmodem101"   # Feather M0 on this Mac 
 BAUD = 9600                  # Must match Serial.begin(9600) in the Arduino code
 OUTPUT_FILE = "sensor_data.csv"   # File where the data will be saved
 # -----------------------------------------
